@@ -44,7 +44,6 @@ void	eat(t_philo *philo)
 {
 	printf("philo %d eats right %d left %d\n", philo->range, philo->tab[philo->range], philo->tab[(philo->range + 1) % philo->total]);
 	usleep(3000);
-	drop_forks(philo);
 }
 
 
@@ -53,16 +52,12 @@ void 	*routine(void *arg)
 	t_philo		*philo;
 
 	philo = (t_philo *)arg;
-	printf("philo %d id is %d\n", philo->range, id[philo->range]);
 	while (1)
 	{
-		printf("philo %d 1\n", philo->range);
 		go_to_sleep(philo);
-		if (take_forks(philo) == 0)
-			printf("ok\n"); // s'il n'en a pas il reesaye
+		take_forks(philo);
 		eat(philo);
-		if (drop_forks(philo) == 0)
-			printf("philo %d 10\n", philo->range);
+		drop_forks(philo);
 	}
 	return (NULL);
 }
@@ -84,7 +79,7 @@ int	main(void)
 {
 	int					i;
 	pthread_t			philo[4];
-	int					forks[4] = {1, 1, 1, 1}; // créer une fonction qui remplit un tableau
+	int					forks[4] = {1, 1, 1, 1};
 	t_philo				*tab_philo[4];
 
 	i = 0;
@@ -93,9 +88,6 @@ int	main(void)
 	while (i < 4)
 	{
 		tab_philo[i] = init_philo(i, forks);
-		//printf("range %d\n", tab_philo[i]->range);
-		// int	sas;
-		// sas = tab_philo[i]->range;
 		if (tab_philo[i] == NULL)
 			ft_error();
 		if (pthread_create(&philo[i], NULL, &routine, tab_philo[i]) != 0)
