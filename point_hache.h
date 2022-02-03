@@ -10,9 +10,10 @@
 typedef struct s_philo t_philo;
 struct	s_philo
 {
-	int	*tab;
-	int	range;
-	int	total;
+	int					*tab;
+	int					range;
+	int					total;
+	unsigned long long	last_meal;
 };
 
 void	ft_error(void);
