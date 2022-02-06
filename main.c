@@ -2,7 +2,8 @@
 
 pthread_mutex_t		take;
 pthread_mutex_t		drop;
-int					id[4] = {11, 13, 17, 19};
+pthread_mutex_t		look;
+
 
 unsigned long long	what_time_is_it(void)
 {
@@ -25,36 +26,48 @@ void	go_to_sleep(t_philo *philo)
 int	take_forks(t_philo *philo)
 {
 	// tant que tu n'as pas les deux fourchettes dispo tu relances la fonction
-	while (philo->tab[philo->range] != 1 && philo->tab[(philo->range + 1) % philo->total] != 1)
+	pthread_mutex_lock(&look); // creer un mutex par fourchette pour qu'un philo en attente ne bloque pas tout les autres
+	usleep(3000);
+	while (1)
 	{
 		printf("%lld philo %d is starving\n", what_time_is_it(), philo->range);
-		usleep(1000);
+		if (philo->tab[philo->range] == 1 && philo->tab[(philo->range + 1) % philo->total] == 1)
+		{
+			printf("philo %d is ok? right %d left %d\n", philo->range, philo->tab[philo->range], philo->tab[(philo->range + 1) % philo->total]);
+			break;
+		}
+		else
+			usleep(1000);
 		//are_you_diying(philo);
 	}
+	pthread_mutex_unlock(&look);
 	if (philo->tab[philo->range] == 1 && philo->tab[(philo->range + 1) % philo->total] == 1)
 	{	
-		usleep(3000);
+		//usleep(30000);
 		pthread_mutex_lock(&take);
 		// disposition de la table à l'entrée
+		printf("philo %d lock take\n", philo->range);
 		printf("philo %d table before taking fork :%d%d%d%d\n", philo->range, philo->tab[0], philo->tab[1], philo->tab[2], philo->tab[3]);
 		if (philo->tab[philo->range] == 1)
-			philo->tab[philo->range] = 0; // fourchette à sa gauche
+			philo->tab[philo->range] -= 1; // fourchette à sa gauche
 		else
 		{
+			printf("philo %d error left fork\n", philo->range);
 			pthread_mutex_unlock(&take);
 			return (0);
 		}
-		printf("philo %d modulo %d \n", philo->range, (philo->range + 1) % philo->total);
 		if (philo->tab[(philo->range + 1) % philo->total] == 1)
-			philo->tab[(philo->range + 1) % philo->total] = 0; // fourchette à sa droite
+			philo->tab[(philo->range + 1) % philo->total] -= 1; // fourchette à sa droite
 		else
 		{
+			printf("philo %d error right fork\n", philo->range);
 			pthread_mutex_unlock(&take);
 			return (0);
 		}	
 		// disposition de la table en sortie
 		printf("philo %d table after taking fork :%d%d%d%d\n", philo->range, philo->tab[0], philo->tab[1], philo->tab[2], philo->tab[3]);
 		pthread_mutex_unlock(&take);
+		printf("philo %d unlock take\n", philo->range);
 	}
 	return (0);
 }
@@ -62,21 +75,28 @@ int	take_forks(t_philo *philo)
 int	drop_forks(t_philo *philo)
 {
 	pthread_mutex_lock(&drop);
-	philo->tab[philo->range] = 1;
-	philo->tab[(philo->range + 1) % philo->total] = 1;
+	printf("philo %d lock drop\n", philo->range);
+	philo->tab[philo->range] += 1;
+	philo->tab[(philo->range + 1) % philo->total] += 1;
 	//printf("philo %d has droped forks right %d left %d\n", philo->range, philo->tab[philo->range], philo->tab[(philo->range + 1) % philo->total]);
-	printf("philo %d drop and table :%d%d%d%d\n", philo->range, philo->tab[0], philo->tab[1], philo->tab[2], philo->tab[3]);
+	printf("philo %d drop forks and table :%d%d%d%d\n", philo->range, philo->tab[0], philo->tab[1], philo->tab[2], philo->tab[3]);
 	pthread_mutex_unlock(&drop);
+	printf("philo %d unlock drop\n", philo->range);
 	return (0);
 }
 
 int	eat(t_philo *philo)
 {
-	if (philo->tab[philo->range] == 1 && philo->tab[(philo->range + 1) % philo->total] == 1)
+	if (philo->tab[philo->range] == 0 && philo->tab[(philo->range + 1) % philo->total] == 0)
 	{
-		printf("philo %d eats right %d left %d\n", philo->range, philo->tab[philo->range], philo->tab[(philo->range + 1) % philo->total]);
+		printf("philo %d start eating\n", philo->range);
 		usleep(3000);
 		philo->last_meal = what_time_is_it();
+	}
+	else
+	{
+		printf("philo %d no fork to eat\n", philo->range);
+		printf("philo %d right %d left %d\n", philo->range, philo->tab[(philo->range + 1) % philo->total], philo->tab[philo->range]);
 	}
 	return (0);
 }
@@ -118,6 +138,7 @@ int	main(void)
 	t_philo				*tab_philo[4];
 
 	i = 0;
+	pthread_mutex_init(&look, NULL);
 	pthread_mutex_init(&take, NULL);
 	pthread_mutex_init(&drop, NULL);
 	while (i < 4)
@@ -142,6 +163,7 @@ int	main(void)
 		}
 		i++;
 	}
+	pthread_mutex_destroy(&look);
 	pthread_mutex_destroy(&take);
 	pthread_mutex_destroy(&drop);
 	return (0);
