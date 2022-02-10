@@ -2,7 +2,7 @@
 
 pthread_mutex_t		take;
 pthread_mutex_t		drop;
-pthread_mutex_t		look;
+//pthread_mutex_t		look[4];
 
 
 unsigned long long	what_time_is_it(void)
@@ -25,22 +25,26 @@ void	go_to_sleep(t_philo *philo)
 
 int	take_forks(t_philo *philo)
 {
-	// tant que tu n'as pas les deux fourchettes dispo tu relances la fonction
-	pthread_mutex_lock(&look); // creer un mutex par fourchette pour qu'un philo en attente ne bloque pas tout les autres
+	pthread_mutex_lock(&look[philo->range]);
+	pthread_mutex_lock(&look[philo->tab[(philo->range + 1) % philo->total]]);
 	usleep(3000);
 	while (1)
 	{
-		printf("%lld philo %d is starving\n", what_time_is_it(), philo->range);
 		if (philo->tab[philo->range] == 1 && philo->tab[(philo->range + 1) % philo->total] == 1)
 		{
 			printf("philo %d is ok? right %d left %d\n", philo->range, philo->tab[philo->range], philo->tab[(philo->range + 1) % philo->total]);
 			break;
 		}
 		else
+		{
+			printf("%lld philo %d is starving\n", what_time_is_it(), philo->range);
 			usleep(1000);
+		}
 		//are_you_diying(philo);
 	}
-	pthread_mutex_unlock(&look);
+	printf("philo %d unlock look\n", philo->range);
+	pthread_mutex_unlock(&look[philo->range]);
+	pthread_mutex_unlock(&look[philo->tab[(philo->range + 1) % philo->total]]);
 	if (philo->tab[philo->range] == 1 && philo->tab[(philo->range + 1) % philo->total] == 1)
 	{	
 		//usleep(30000);
@@ -103,13 +107,14 @@ int	eat(t_philo *philo)
 
 void 	*routine(void *arg)
 {
-	t_philo		*philo;
-
+	t_philo				*philo;
+	
 	philo = (t_philo *)arg;
 	while (1)
 	{
 		go_to_sleep(philo);
 		//wait_and_starve(philo);
+		printf("philo %d a\n", philo->range);
 		take_forks(philo);
 		eat(philo);
 		drop_forks(philo);
@@ -119,28 +124,46 @@ void 	*routine(void *arg)
 
 t_philo	*init_philo(int i, int *tab)
 {
-	t_philo	*philo;
+	t_philo			*philo;
+	pthread_mutex_t	forks[4];
 
+	pthread_mutex_init(&forks[philo->range]);
+	philo->l_fork = &forks[philo->range];
+	pthread_mutex_init(&forks);
 	philo = malloc(sizeof(t_philo));
 	if (philo == NULL )
 		return (NULL);
 	philo->range = i;
 	philo->tab = tab;
 	philo->total = 4;
+
 	return (philo);
+}
+
+t_data	*init_data()
+{
+	
 }
 
 int	main(void)
 {
 	int					i;
-	pthread_t			philo[4];
-	int					forks[4] = {1, 1, 1, 1};
-	t_philo				*tab_philo[4];
+	t_data				data;
+	// pthread_t			philo[4];
+	// int					forks[4] = {1, 1, 1, 1};
+	// t_philo				*tab_philo[4];
 
-	i = 0;
-	pthread_mutex_init(&look, NULL);
-	pthread_mutex_init(&take, NULL);
-	pthread_mutex_init(&drop, NULL);
+	// i = 0;
+	// // faire fonction init mutex
+	// // while (i < 4)
+	// // {	
+	// // 	pthread_mutex_init(&look[i], NULL);
+	// // 	i++;
+	// // }
+	// i = 0;
+	// // pthread_mutex_init(&take, NULL);
+	// // pthread_mutex_init(&drop, NULL);
+	data = init_data();
 	while (i < 4)
 	{
 		tab_philo[i] = init_philo(i, forks);
@@ -163,7 +186,12 @@ int	main(void)
 		}
 		i++;
 	}
-	pthread_mutex_destroy(&look);
+	i = 0;
+	while (i < 4)
+	{	
+		pthread_mutex_destroy(&look[i]);
+		i++;
+	}
 	pthread_mutex_destroy(&take);
 	pthread_mutex_destroy(&drop);
 	return (0);
